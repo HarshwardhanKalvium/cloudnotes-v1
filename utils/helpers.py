@@ -1,31 +1,30 @@
-import sqlite3
 import os
 
-SCHEMA = """
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+MIGRATION = """
 CREATE TABLE IF NOT EXISTS notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
     filename TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """
 
 ALLOWED_EXTENSIONS = {"txt", "md", "pdf", "png", "jpg", "jpeg", "gif"}
 
 
-def get_db_connection(db_path):
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+def get_db_connection(database_url):
+    return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
 
 
-def init_db(db_path):
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = get_db_connection(db_path)
+def init_db(database_url):
+    conn = get_db_connection(database_url)
     with conn:
-        conn.executescript(SCHEMA)
-    conn.close()
+        with conn.cursor() as cursor:
+            cursor.execute(MIGRATION)
 
 
 def allowed_file(filename):
