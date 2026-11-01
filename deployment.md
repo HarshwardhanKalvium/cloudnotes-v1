@@ -53,3 +53,23 @@ your browser -> host / VM network -> OS firewall / open port
 ```
 
 For a VM, use its bridged IP or forward host port 5000 to guest port 5000.
+
+## Kubernetes
+
+Build the image in the local cluster's image store, then apply the manifests:
+
+```bash
+docker build -t cloudnotes:latest .
+kubectl apply -f k8s/
+kubectl rollout status deployment/cloudnotes
+kubectl get pods
+kubectl get svc cloudnotes
+kubectl get endpoints cloudnotes
+kubectl port-forward svc/cloudnotes 8080:80
+curl http://localhost:8080/
+```
+
+The Service selects the Deployment pods using the shared `app: cloudnotes`
+label. The local `ClusterIP` is reached with port-forwarding; in production,
+the same manifests can run on GKE with a cloud `LoadBalancer` or Ingress as
+the access method.

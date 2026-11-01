@@ -1,53 +1,33 @@
-import os
-
-from dotenv import load_dotenv
-from flask import Flask, render_template, send_from_directory
-
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from api.routes import api_bp
 from utils.helpers import init_db
+import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+DATABASE_PATH = os.path.join(BASE_DIR, "database", "cloudnotes.db")
 
+app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["DATABASE_PATH"] = DATABASE_PATH
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
-def create_app():
-    load_dotenv()
+app.register_blueprint(api_bp, url_prefix="/api")
 
-    database_url = os.environ.get("DATABASE_URL")
-    secret_key = os.environ.get("SECRET_KEY")
-    if not database_url:
-        raise RuntimeError("DATABASE_URL must be set")
-    if not secret_key:
-        raise RuntimeError("SECRET_KEY must be set")
+init_db(DATABASE_PATH)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-    application = Flask(__name__)
-    application.config["UPLOAD_FOLDER"] = os.environ.get(
-        "UPLOAD_FOLDER", UPLOAD_FOLDER
-    )
-    application.config["DATABASE_URL"] = database_url
-    application.config["SECRET_KEY"] = secret_key
-    application.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-    init_db(database_url)
-    os.makedirs(application.config["UPLOAD_FOLDER"], exist_ok=True)
-    application.register_blueprint(api_bp, url_prefix="/api")
+@app.route("/notes")
+def notes_page():
+    return render_template("notes.html")
 
-    @application.route("/")
-    def home():
-        return render_template("index.html")
-
-    @application.route("/notes")
-    def notes_page():
-        return render_template("notes.html")
-
-    @application.route("/uploads/<path:filename>")
-    def uploaded_file(filename):
-        return send_from_directory(application.config["UPLOAD_FOLDER"], filename)
-
-    return application
-
-
-app = create_app()
+@app.route("/uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True, host="127.0.0.1", port=5000)
